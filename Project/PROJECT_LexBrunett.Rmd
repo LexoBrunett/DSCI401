@@ -1,0 +1,549 @@
+---
+title: "DSCI401_Project_LexBrunett"
+author: "Lex Miguel Brunett Chavez"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+# R Markdown Individual Project
+
+
+Due: December 12, 2023
+
+Individual project should be submitted as an R Markdown file with links to Google colab notes where necessary. Homework should be turned in on Sakai.
+
+## Introduction
+
+Residential loan applications processed by banks in Chicago play a vital role in the ever-evolving local real estate landscape. However, amidst a global economic crisis, it is pertinent to analyze temporal trends in loan application volumes, seeking patterns and fluctuations over distinct time periods. Our examination extends to the distribution of loan applications across genders and ethnicities, where descriptive statistics are employed to identify potential significant differences, hinting at potential inequities. Exploring the range and distribution of loan amounts, our objective is to grasp the typical size of residential loans. Furthermore, we delve into the factors influencing interest rates on approved loans, identifying significant variables. Lastly, we scrutinize how loan amounts vary across the five main loan purposes, offering nuanced insights into the diverse financial needs associated with different loan intents.
+
+## Dataset
+
+
+The dataset provides a comprehensive perspective on residential loan applications processed by participating banks operating within the city limits of Chicago, emphasizing transparency in public information to uphold lending equity standards. https://data.cityofchicago.org/Administration-Finance/Lending-Equity-Residential-Lending/b77m-uuhb/about_data
+Spanning the years 2021 to 2023, the dataset encompasses 46 columns, each representing distinct variables such as Reporting year, bank, loan amount, loan purpose, loan type, interest rate, ethnicity of the applicant, gender of the applicant, and property value. Comprising a robust 78.1k rows, each row corresponds to a unique loan application, offering profound insights into the myriad factors shaping the real estate landscape. This valuable information is curated from the Chicago Data Portal, sourced from the Department of Finance of the city of Chicago, ensuring reliability and relevance.
+
+## Methods
+
+Variations of the volume of residential loan applications over time in Chicago.
+
+Temporal trends, patterns, and fluctuations over different periods. To start with the analysis the data was cleaned by removing missing values in the Application date column, and then this cleared variable was used with "ggplot2" to create a basic time series histogram, allowing an easy visualization of the number of applications over time. To enhance user engagement the data is then converted into an interactive form by using the "plotly" package, which shows fluctuations and patterns in the volume of residential loan applications.
+
+Distribution of loan applications among different genders and ethnicities.  
+
+To visualize the gender distribution among the loan applications, a bar chart was created by using "ggplot2", then to make an interactive plot, the "plotly" package was applied. A similar method was followed to visualize ethnicity and race distribution, and a posterior analysis was performed to understand the dynamics of the patterns.
+
+Range and distribution of loan amounts for residential lending in Chicago. 
+
+The column Loann Amount was first cleared and converted to a numeric format, then, with the use of the "ggplot2" package a dispersion scatter plot was generated, where the x-axis represents the Loan Amount and the y-axis the loan purpose, each point is colored by the taken action. Additionally, the plot was converted to an interactive graphic to show detailed information about the loan purpose distribution.
+
+
+Factors (Variables) that influence the interest rates assigned to approved loans. 
+
+To determine which factors, influence the most, a logistic regression model was constructed and the variables analyzed corresponded to Open End Line of Credit, Loan Purpose, Bank Reason for Denial, Race, Ethnicity, and Gender of Applicant or Borrower, and the correspondent variables of the co-applicants. Then the summary function was used to print the details of the model, including coefficients, standard errors, z-values, and p-values that assess the significance of each predictor.
+
+Distribution of loan amount vary across the 5 main loan purposes. 
+
+To analyze how loan amounts differ across the five main loan purposes and assess potential variations in mean loan amounts among these purposes, the first step involved converting the "Loan Amount" variable to a numeric. Following this, an interactive box plot graph was generated using the Plotly and ggplot2 libraries. This graphical representation serves to illustrate the distribution of loan amounts for each loan purpose. On the graph, the x-axis corresponds to the loan purpose categories, the y-axis reflects the loan amounts, and each box plot is color-coded based on the specific loan purpose. This interactive plot offers a dynamic and insightful visualization of the diversity in loan amounts associated with each distinct loan purpose.
+
+
+The rest is in the report in PDF
+
+## Appendix of code in R and Python
+
+```{r datapreparation}
+
+
+if (!require(dplyr)) {
+  install.packages("dplyr")
+  library(dplyr)
+}
+
+if (!require(ggplot2)) {
+  install.packages("ggplot2")
+  library(ggplot2)
+}
+
+if (!require(plotly)) {
+  install.packages("plotly")
+  library(plotly)
+}
+
+if (!require(tidyverse)) {
+  install.packages("tidyverse")
+  library(tidyverse)
+}
+
+if (!require(caret)) {
+  install.packages("caret")
+  library(caret)
+}
+
+if (!require(shiny)) {
+  install.packages("shiny")
+  library(shiny)
+}
+
+if (!require(lubridate)) {
+  install.packages("lubridate")
+  library(lubridate)
+}
+
+if (!require(forecast)) {
+  install.packages("forecast")
+  library(forecast)
+}
+
+
+loans_DF <- read.csv("https://raw.githubusercontent.com/LexoBrunett/STAT408_LexoBrunett/main/Datasets/Lending_Equity_-_Residential_Lending_Treated.csv", sep = ";")
+
+# Supongamos que loans_DF$Application.Date es un factor con el formato MM/DD/YYYY
+loans_DF$Application.Date <- as.Date(loans_DF$Application.Date, format = "%m/%d/%Y")
+
+# Filtrar solo las filas con fechas válidas
+loans_DF <- loans_DF[!is.na(loans_DF$Application.Date),]
+
+# Filtrar fechas desde 2020 hasta 2022
+loans_DF <- subset(loans_DF, year(Application.Date) >= 2020 & year(Application.Date) <= 2022)
+
+head(loans_DF)
+
+#str(loans_DF)
+
+# Contar la cantidad de valores NA en cada columna
+#na_counts <- colSums(is.na(loans_DF))
+
+# Mostrar los resultados
+#print(na_counts)
+
+
+# Contar la cantidad de valores vacíos en cada columna
+#empty_counts <- colSums(loans_DF == "-")
+
+# Mostrar los resultados
+#print(empty_counts)
+
+# Mostrar solo las columnas con valores vacíos
+#columns_with_empty <- names(empty_counts[empty_counts > 0])
+#print(columns_with_empty)
+
+#attach(loans_DF);
+
+# Asegúrate de que los nombres en columns_char coincidan exactamente
+columns_char <- c("RFP.Source", "Data.Description", "Open.End.Line.of.Credit", "Action.Taken", "Loan.Purpose", "Race.of.Applicant.or.Borrower..1.", "Ethnicity.of.Applicant.or.Borrower..1.", "Sex.of.Applicant.or.Borrower", "Bank", "Loan.Type", "Reason.for.Denial..1.", "Race.of.Co.Applicant.or.Borrower..1.", "Ethnicity.of.Co.Applicant.or.Borrower..1.", "Sex.of.Co.Applicant.or.Borrower")
+
+# Convertir las columnas seleccionadas a factores
+for (col in columns_char) {
+  loans_DF[[col]] <- factor(loans_DF[[col]])
+}
+
+
+```
+
+
+bklabka
+
+```{r General_Visual_HistCatValues}
+
+#str(loans_DF)
+
+# Obtener las columnas que contienen caracteres
+columns_with_chars <- sapply(loans_DF, function(x) is.factor(x))
+
+# Iterar sobre las columnas con caracteres
+for (column in names(loans_DF)[columns_with_chars]) {
+  
+  # Crear un gráfico de barras (histograma de frecuencias)
+  histogram_plot <- ggplot(loans_DF, aes(x = !!as.name(column))) +
+    geom_bar(fill = "blue") +
+    labs(title = paste("Histograma de Frecuencias para", column),
+         x = column,
+         y = "Frecuencia") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Ajusta el ángulo según tu preferencia
+  
+  # Mostrar el gráfico
+  print(histogram_plot)
+}
+
+
+
+```
+
+```{r General_Visual_ContingencyTableValues}
+
+# Crear la tabla de contingencia
+table_Contingency_Applicant <- ftable(loans_DF[, c("Race.of.Applicant.or.Borrower..1.","Action.Taken")])
+
+
+table_Contingency_Coapplicant <- ftable(loans_DF[, c("Race.of.Co.Applicant.or.Borrower..1.", "Action.Taken")])
+
+
+# Realizar el test de chi cuadrado
+results_Chi_Test_Applicant <- chisq.test(table_Contingency_Applicant)
+# Mostrar el resultado
+print(results_Chi_Test_Applicant)
+
+# Realizar el test de chi cuadrado
+results_Chi_Test_Coapplicant <- chisq.test(table_Contingency_Coapplicant)
+# Mostrar el resultado
+print(results_Chi_Test_Coapplicant)
+
+```
+
+
+## 1. Answer the questions below:
+### Question 1: "How has the volume of residential loan applications changed over time in Chicago?" Analyze the temporal trends in loan applications, looking for patterns or fluctuations over different time periods.
+
+
+
+```{r General_Visual_TimeSeries_Hist}
+
+# Remove rows with non-finite values in 'Application Date'
+loans_DF <- loans_DF[!is.na(loans_DF$Application.Date), ]
+
+# Crea un gráfico interactivo de barras con plotly
+interactive_plot <- ggplot(loans_DF, aes(x = Application.Date)) +
+  geom_bar(fill = "blue") +
+  labs(title = "Volume of Residential Loan Applications Over Time",
+       x = "Application Date",
+       y = "Number of Applications")
+
+# Convierte el gráfico a un gráfico interactivo con plotly
+interactive_plot <- ggplotly(interactive_plot)
+
+# Muestra el gráfico interactivo
+interactive_plot
+
+```
+
+blablabla
+
+```{r General_Visual_TimeSeries_Scatter}
+
+# Remove rows with non-finite values in 'Application Date'
+loans_DF <- loans_DF[!is.na(loans_DF$Application.Date), ]
+
+# Crea un gráfico interactivo de frecuencia poligonal con plotly
+freqpoly_plot <- ggplot(loans_DF, aes(x = Application.Date)) +
+  geom_freqpoly(binwidth = 1, color = "blue") +
+  labs(title = "Volume of Residential Loan Applications Over Time as freqpoly",
+       x = "Application Date",
+       y = "Number of Applications")
+
+# Convierte el gráfico a un gráfico interactivo con plotly
+freqpoly_plot <- ggplotly(freqpoly_plot)
+
+# Muestra el gráfico interactivo
+freqpoly_plot
+
+```
+
+ablablbla
+
+```{r General_Visual_TimeSeries_Week_peryear}
+
+# Supongamos que 'loans_DF' es tu dataframe original
+loans_DF$Application.Date <- as.Date(loans_DF$Application.Date)
+loans_DF$Week <- lubridate::week(loans_DF$Application.Date)
+
+# Obtener los años únicos en el dataframe
+unique_years <- unique(year(loans_DF$Application.Date))
+
+# Crear un gráfico interactivo de frecuencia poligonal por semana para cada año
+for (year in unique_years) {
+  filtered_data <- subset(loans_DF, year(Application.Date) == year)
+  
+  freqpoly_weekly_plot <- ggplot(filtered_data, aes(x = Week)) +
+    geom_freqpoly(binwidth = 1, color = "blue") +
+    labs(title = paste("Volume of Residential Loan Applications in", year),
+         x = "Week",
+         y = "Number of Applications")
+  
+  # Convierte el gráfico a un gráfico interactivo con plotly
+  freqpoly_weekly_plot <- ggplotly(freqpoly_weekly_plot)
+  
+  # Muestra el gráfico interactivo
+  print(freqpoly_weekly_plot)
+}
+
+```
+
+blabla
+
+
+```{r General_Visual_TimeSeries_Months}
+
+# Supongamos que 'loans_DF' es tu dataframe original
+loans_DF$Application.Date <- as.Date(loans_DF$Application.Date)
+
+# Obtener los años únicos en el dataframe
+unique_years <- unique(year(loans_DF$Application.Date))
+
+# Crear un gráfico interactivo de frecuencia poligonal por mes para cada año
+for (year in unique_years) {
+  filtered_data <- subset(loans_DF, year(Application.Date) == year)
+  
+  freqpoly_monthly_plot <- ggplot(filtered_data, aes(x = month(Application.Date), group = 1)) +
+    geom_freqpoly(binwidth = 1, color = "blue") +
+    labs(title = paste("Volume of Residential Loan Applications by Month in", year),
+         x = "Month",
+         y = "Number of Applications")
+  
+  # Convierte el gráfico a un gráfico interactivo con plotly
+  freqpoly_monthly_plot <- ggplotly(freqpoly_monthly_plot)
+  
+  # Muestra el gráfico interactivo
+  print(freqpoly_monthly_plot)
+}
+
+
+```
+
+```{r PCF_PACF}
+
+# Asegúrate de que 'Application.Date' sea de clase Date
+loans_DF$Application.Date <- as.Date(loans_DF$Application.Date)
+
+# Crea una serie temporal con la frecuencia de aplicaciones de préstamos
+time_series <- ts(table(loans_DF$Application.Date), frequency = 1, start = 1)
+
+# Realiza el gráfico de ACF y PACF
+par(mfrow = c(1, 2))
+acf(time_series, main = "ACF - Loan Applications")
+pacf(time_series, main = "PACF - Loan Applications")
+
+```
+
+
+
+```{r Prediction_TS}
+
+# Asegúrate de que 'Application.Date' sea de clase Date
+loans_DF$Application.Date <- as.Date(loans_DF$Application.Date)
+
+# Crea una serie temporal con la frecuencia de aplicaciones de préstamos
+time_series <- ts(table(loans_DF$Application.Date), frequency = 1, start = 1)
+
+# Split del conjunto de datos para entrenamiento y prueba
+train_index <- floor(0.8 * length(time_series))
+train_data <- window(time_series, end = train_index)
+test_data <- window(time_series, start = train_index + 1)
+
+# Entrenamiento del modelo ARIMA y predicción
+predicted <- numeric(length(test_data))
+for (i in 1:length(test_data)) {
+  train_subset <- window(time_series, end = train_index + i - 1)
+  arima_model <- auto.arima(train_subset)
+  pred <- forecast(arima_model, 1)
+  predicted[i] <- pred$mean
+}
+
+# Creación del dataframe con observaciones y predicciones
+df_pred <- tibble(
+  obs = c(as.vector(train_data), as.vector(test_data)),
+  predicted = c(as.vector(train_data), predicted),
+  time = time(time_series)
+)
+
+# Gráfico de las observaciones y predicciones
+ggplot(gather(df_pred, obs_pred, value, -time) %>%
+         mutate(obs_pred = factor(obs_pred, levels = c("predicted", "obs"))),
+       aes(x = time, y = value, col = obs_pred, linetype = obs_pred)) +
+  geom_line() + xlab("") + ylab("") +
+  scale_color_manual(values = c("black", "hotpink")) +
+  scale_linetype_manual(values = c(2, 1)) +
+  theme_bw() + theme(legend.title = element_blank(),
+                     axis.text.x = element_text(angle = 45, vjust = 0.5))
+
+```
+
+
+BLABLABLA
+
+
+## 2. Answer the questions below:
+### Question 2: "How does the distribution of loan applications vary across different genders and ethnicities?" Use descriptive statistics to understand the distribution of loan applications to investigate whether there are significant differences among genders and ethnicities.
+
+```{r Race_Eth_Gender_By_LoamAmount}
+
+# Crea un gráfico de barras para la distribución por género y Action.Taken
+gender_plot <- ggplot(loans_DF, aes(x = Sex.of.Applicant.or.Borrower, fill = Action.Taken)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Distribution of Loan Applications by Gender and Action Taken",
+       x = "Gender",
+       y = "Number of Applications") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("1-Loan originated" = "green", "3-Application denied" = "red"))
+
+# Convierte el gráfico a un gráfico interactivo con plotly
+gender_interactive_plot <- ggplotly(gender_plot)
+
+# Muestra el gráfico interactivo
+gender_interactive_plot
+
+# Crea un gráfico de barras para la distribución por etnia y Action.Taken
+ethnicity_plot <- ggplot(loans_DF, aes(x = Ethnicity.of.Applicant.or.Borrower..1., fill = Action.Taken)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Distribution of Loan Applications by Ethnicity and Action Taken",
+       x = "Ethnicity",
+       y = "Number of Applications") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("1-Loan originated" = "green", "3-Application denied" = "red"))
+
+# Convierte el gráfico a un gráfico interactivo con plotly
+ethnicity_interactive_plot <- ggplotly(ethnicity_plot)
+
+# Muestra el gráfico interactivo
+ethnicity_interactive_plot
+
+# Crea un gráfico de barras para la distribución por raza y Action.Taken
+race_plot <- ggplot(loans_DF, aes(x = Race.of.Applicant.or.Borrower..1., fill = Action.Taken)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Distribution of Loan Applications by Race and Action Taken",
+       x = "Race",
+       y = "Number of Applications") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("1-Loan originated" = "green", "3-Application denied" = "red"))
+
+# Convierte el gráfico a un gráfico interactivo con plotly
+race_interactive_plot <- ggplotly(race_plot)
+
+# Muestra el gráfico interactivo
+race_interactive_plot
+
+```
+
+## 3. Answer the questions below:
+### Question 3: "What is the distribution of loan amounts for residential lending in Chicago?" Explore the range and distribution of loan amounts to understand the typical size of residential loans.
+
+```{r Scatter_LoanAmountVSLoanPurpose}
+
+# Convierte 'Loan Amount' a numérico si no está en ese formato
+loans_DF$Loan.Amount <- as.numeric(as.character(loans_DF$Loan.Amount))
+
+# Crea un scatter plot
+scatter_plot <- ggplot(loans_DF, aes(x = Loan.Amount, y = Loan.Purpose, color = factor(Action.Taken))) +
+  geom_point() +
+  labs(title = "Scatter Plot of Loan Amount vs Loan Purpose",
+       x = "Loan Amount",
+       y = "Loan Purpose",
+       color = "Taken Action") +
+  scale_x_continuous(labels = scales::comma_format()) +  # Agrega comas al formato
+  scale_color_manual(values = c("green", "red"))  # Paleta de colores para cada categoría
+
+# Convierte el gráfico a un gráfico interactivo con plotly
+scatter_interactive_plot <- ggplotly(scatter_plot)
+
+# Muestra el gráfico interactivo
+scatter_interactive_plot
+
+
+```
+
+```{r HistLoanAmountByTakenAction}
+
+# Convierte 'Loan Amount' a numérico si no está en ese formato
+loans_DF$Loan.Amount <- as.numeric(as.character(loans_DF$Loan.Amount))
+
+# Crea un gráfico interactivo de barras con plotly
+interactive_plot <- ggplot(loans_DF, aes(x = Loan.Amount, fill = factor(Action.Taken))) +
+  geom_bar(position = "stack", stat = "count", width = 1000) +
+  labs(title = "Distribution of Loan Amounts by Taken Action",
+       x = "Loan Amount",
+       y = "Frequency",
+       fill = "Taken Action") +
+  scale_x_continuous(labels = scales::comma_format()) +  # Agrega comas al formato
+  scale_fill_manual(values = c("green", "red"))  # Paleta de colores para cada categoría
+
+# Convierte el gráfico a un gráfico interactivo con plotly
+interactive_plot <- ggplotly(interactive_plot)
+
+# Muestra el gráfico interactivo
+interactive_plot
+
+```
+
+### Question 4: "Which factors influence the interest rates assigned to approved loans?" Identify the variables (e.g., loan amount, loan term, applicant's characteristics) that significantly impact the interest rates assigned to approved loans.
+
+```{r lineal_regression_interest_race}
+# Ajusta el modelo lineal
+model_race <- lm(Interest.Rate ~ Loan.Amount + Loan.Term..Months. + Loan.Purpose + Race.of.Applicant.or.Borrower..1., data = loans_DF)
+
+# Resumen del modelo
+summary(model_race)
+
+```
+
+blablabla
+
+```{r lineal_regression_interest_ethin}
+# Ajusta el modelo lineal
+model_ethici <- lm(Interest.Rate ~ Loan.Amount + Loan.Term..Months. + Loan.Purpose + Race.of.Applicant.or.Borrower..1., data = loans_DF)
+
+# Resumen del modelo
+summary(model_ethici)
+
+```
+
+blabla
+
+```{r lineal_regression_interest_sex}
+# Ajusta el modelo lineal
+model_sex <- lm(Interest.Rate ~ Loan.Amount + Loan.Term..Months. + Loan.Purpose + Race.of.Applicant.or.Borrower..1., data = loans_DF)
+
+# Resumen del modelo
+summary(model_sex)
+
+```
+
+```{r Logistic_Regression}
+
+# Crear un modelo de regresión logística
+modelo_logistico_Applicant <- glm(Action.Taken ~ Open.End.Line.of.Credit + Loan.Purpose + Bank + Reason.for.Denial..1. + Race.of.Applicant.or.Borrower..1. + Ethnicity.of.Applicant.or.Borrower..1. + Sex.of.Applicant.or.Borrower, data = loans_DF, family = "binomial")
+
+# Imprimir un resumen del modelo
+summary(modelo_logistico_Applicant)
+
+# Crear un modelo de regresión logística
+modelo_logistico_Copplicant <- glm(Action.Taken ~ Open.End.Line.of.Credit + Loan.Purpose + Bank + Reason.for.Denial..1. + Race.of.Co.Applicant.or.Borrower..1. + Ethnicity.of.Co.Applicant.or.Borrower..1. + Sex.of.Co.Applicant.or.Borrower, data = loans_DF, family = "binomial")
+
+# Imprimir un resumen del modelo
+summary(modelo_logistico_Copplicant)
+
+```
+
+## 5. Answer the questions below:
+### Question 5: "How does the loan amount vary across the 5 main loan purposes, and is there a significant difference in mean loan amounts between these purposes?" Identify how loan amounts differ across these purposes to provide insights into the financial needs associated with different loan intents.
+
+
+
+```{r BoxPlot_LoanAmountByLoanPurprose}
+
+# Crea un gráfico interactivo de caja con plotly
+interactive_plot <- ggplot(loans_DF, aes(x = Loan.Purpose, y = Loan.Amount, fill = Loan.Purpose)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Loan Amounts Across Loan Purposes",
+       x = "Loan Purpose",
+       y = "Loan Amount",
+       fill = "Loan Purpose") +
+  scale_y_continuous(labels = scales::dollar_format(scale = 0.001, suffix = "k")) +  # Formato en dólares con escala
+  theme_minimal()
+
+# Convierte el gráfico a un gráfico interactivo con plotly
+interactive_plot <- ggplotly(interactive_plot)
+
+# Muestra el gráfico interactivo
+interactive_plot
+```
+
+Please review the same homework in google colab (Python) following this link: **[Google Colab notebook](https://colab.research.google.com/drive/179-a0mQDCRUFdO_E5Pt31S0YBSfS0zBi?usp=sharing)**
+
+And the same file has been uploaded in my Github repository of the class please follow this link:
+**[My GitHub Repository](https://github.com/LexoBrunett/DSCI401)**
